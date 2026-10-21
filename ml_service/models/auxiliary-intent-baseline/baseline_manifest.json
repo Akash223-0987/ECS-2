@@ -1,0 +1,91 @@
+{
+  "model_architecture": "TF-IDF (1-2 grams, max_features=10000) + Logistic Regression",
+  "model_type": "baseline_cpu",
+  "disclaimer": "This is a lightweight classical CPU baseline for auxiliary intent classification. It is NOT a fine-tuned DistilBERT transformer model. Predictions are auxiliary topic tags and MUST NOT be used for follow-up triage or outbound call decisions.",
+  "trained_at": "2026-10-21T20:42:32.621702Z",
+  "random_seed": 42,
+  "selected_hyperparameters": {
+    "C": 5.0,
+    "max_iter": 1000,
+    "ngram_range": [
+      1,
+      2
+    ],
+    "max_features": 10000,
+    "sublinear_tf": true,
+    "val_macro_f1_during_tuning": 1.0
+  },
+  "dataset_split_counts": {
+    "train": 2715,
+    "val": 582,
+    "test": 582
+  },
+  "held_out_test_evaluation": {
+    "test_samples_count": 582,
+    "accuracy": 0.9982817869415808,
+    "macro_f1": 0.9983164983164983,
+    "weighted_f1": 0.9982817869415808,
+    "per_class": {
+      "payment_issue": {
+        "precision": 1.0,
+        "recall": 0.9932885906040269,
+        "f1_score": 0.9966329966329966,
+        "support": 149
+      },
+      "get_refund": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 137
+      },
+      "contact_customer_service": {
+        "precision": 0.9932885906040269,
+        "recall": 1.0,
+        "f1_score": 0.9966329966329966,
+        "support": 148
+      },
+      "recover_password": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 148
+      }
+    },
+    "confusion_matrix": [
+      [
+        148,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        137,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        148,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        148
+      ]
+    ],
+    "class_order": [
+      "payment_issue",
+      "get_refund",
+      "contact_customer_service",
+      "recover_password"
+    ]
+  },
+  "artifacts": {
+    "pipeline": "baseline_pipeline.joblib",
+    "label_mapping": "label_mapping.json"
+  }
+}

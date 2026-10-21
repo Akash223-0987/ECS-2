@@ -1,0 +1,96 @@
+{
+  "dataset_source": "bitext/Bitext-customer-support-llm-chatbot-training-dataset",
+  "created_at": "2026-10-21T20:41:37.043402Z",
+  "random_seed": 42,
+  "selected_intents": [
+    "payment_issue",
+    "get_refund",
+    "contact_customer_service",
+    "recover_password"
+  ],
+  "label2id": {
+    "payment_issue": 0,
+    "get_refund": 1,
+    "contact_customer_service": 2,
+    "recover_password": 3
+  },
+  "id2label": {
+    "0": "payment_issue",
+    "1": "get_refund",
+    "2": "contact_customer_service",
+    "3": "recover_password"
+  },
+  "num_classes": 4,
+  "input_column": "instruction",
+  "target_column": "intent",
+  "excluded_columns": [
+    "response",
+    "category",
+    "flags"
+  ],
+  "statistics": {
+    "raw_total_rows": 26872,
+    "raw_filtered_rows": 3991,
+    "raw_class_counts": {
+      "contact_customer_service": 1000,
+      "payment_issue": 999,
+      "get_refund": 997,
+      "recover_password": 995
+    },
+    "raw_duplicate_instructions": 79,
+    "normalized_duplicate_instructions": 112,
+    "conflicting_duplicate_instructions": 0,
+    "total_unique_examples": 3879,
+    "deduplicated_class_counts": {
+      "payment_issue": 993,
+      "recover_password": 988,
+      "contact_customer_service": 987,
+      "get_refund": 911
+    }
+  },
+  "split_ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "split_counts": {
+    "train": 2715,
+    "val": 582,
+    "test": 582,
+    "total": 3879
+  },
+  "split_class_distributions": {
+    "train": {
+      "payment_issue": 695,
+      "contact_customer_service": 691,
+      "recover_password": 691,
+      "get_refund": 638
+    },
+    "val": {
+      "recover_password": 149,
+      "payment_issue": 149,
+      "contact_customer_service": 148,
+      "get_refund": 136
+    },
+    "test": {
+      "payment_issue": 149,
+      "contact_customer_service": 148,
+      "recover_password": 148,
+      "get_refund": 137
+    }
+  },
+  "preprocessing_steps": [
+    "Filter to 4 target classes: payment_issue, get_refund, contact_customer_service, recover_password",
+    "Text normalization: lowercase, unicode normalize, strip, multi-space collapse",
+    "Conflict audit: verified 0 conflicting labels for identical normalized text",
+    "Deduplication: drop duplicate normalized texts so no utterance spans splits",
+    "Stratified split by intent using random_seed=42 (70% train, 15% val, 15% test)",
+    "Strict cross-split leakage check: verified 0 overlapping normalized texts"
+  ],
+  "leakage_check_passed": true,
+  "files": {
+    "train": "train.jsonl",
+    "val": "val.jsonl",
+    "test": "test.jsonl"
+  }
+}

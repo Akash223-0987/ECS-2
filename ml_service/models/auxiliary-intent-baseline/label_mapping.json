@@ -1,0 +1,20 @@
+{
+  "label2id": {
+    "payment_issue": 0,
+    "get_refund": 1,
+    "contact_customer_service": 2,
+    "recover_password": 3
+  },
+  "id2label": {
+    "0": "payment_issue",
+    "1": "get_refund",
+    "2": "contact_customer_service",
+    "3": "recover_password"
+  },
+  "classes": [
+    "payment_issue",
+    "get_refund",
+    "contact_customer_service",
+    "recover_password"
+  ]
+}
