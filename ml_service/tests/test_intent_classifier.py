@@ -27,6 +27,7 @@ from ml_service.schemas import (
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "auxiliary_intent"
 BASELINE_DIR = Path(__file__).resolve().parent.parent / "models" / "auxiliary-intent-baseline"
+DISTILBERT_DIR = Path(__file__).resolve().parent.parent / "models" / "distilbert-intent-classifier"
 
 
 class TestIntentDatasetPreparation:
@@ -166,6 +167,21 @@ class TestAuxiliaryIntentClassifierInterface:
         pred_ws = classifier.predict_intent("   ")
         assert pred_ws.predicted_intent is None
         assert pred_ws.intent_confidence is None
+
+    def test_distilbert_model_loading_and_inference_if_present(self) -> None:
+        if not (DISTILBERT_DIR / "config.json").exists():
+            pytest.skip("DistilBERT checkpoint not present.")
+        classifier = AuxiliaryIntentClassifier(model_dir=DISTILBERT_DIR)
+        loaded = classifier.load_model()
+        assert loaded is True
+        assert classifier.status == IntentModelStatus.READY
+        assert classifier.model_type == "distilbert"
+
+        pred = classifier.predict_intent("I want to get a refund for my tuition fee")
+        assert pred.status == IntentModelStatus.READY
+        assert pred.predicted_intent in classifier.ALLOWED_INTENTS
+        assert pred.intent_confidence is not None
+        assert pred.model_type == "distilbert"
 
 
 class TestPredictorIntentIntegrationAndSafetyGuardrails:
