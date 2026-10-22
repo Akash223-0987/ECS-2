@@ -1,0 +1,63 @@
+# Python byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Large ML weights and model binary files
+*.pt
+*.bin
+*.onnx
+*.safetensors
+*.pth
+
+# Model checkpoints and training caches
+tmp_checkpoints/
+checkpoint-*/
+runs/
+wandb/
+.cache/
+huggingface/
+
+# Exclude large transformer fine-tuned weights, keep baseline joblib pipeline
+ml_service/models/*
+!ml_service/models/auxiliary-intent-baseline/
+ml_service/models/*backup*/
+ml_service/models/*-backup/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log

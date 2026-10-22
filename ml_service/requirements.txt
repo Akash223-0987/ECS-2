@@ -2,3 +2,6 @@
 pydantic>=2.0.0
 python-dateutil>=2.8.2
 pytest>=7.0.0
+
+# Note: For DistilBERT transformer fine-tuning and inference, install:
+# pip install -r requirements-train.txt

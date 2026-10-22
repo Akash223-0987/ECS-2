@@ -39,9 +39,20 @@ htmlcov/
 # Future ML model artifacts and cache (do not commit large neural weights)
 models/*
 !models/auxiliary-intent-baseline/
+models/*backup*/
+models/*-backup/
+tmp_checkpoints/
+checkpoint-*/
+runs/
+wandb/
 *.pt
 *.bin
 *.onnx
 *.safetensors
+*.log
 .cache/
 huggingface/
+
+# OS files
+.DS_Store
+Thumbs.db
