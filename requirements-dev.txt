@@ -1,0 +1,16 @@
+# LiveKit Core and Agents Framework
+livekit>=1.0.3
+livekit-api>=0.8.0
+livekit-agents>=1.0.0
+
+# Plugins for Voice Pipeline (STT, LLM, VAD)
+livekit-plugins-openai>=1.0.0
+livekit-plugins-deepgram>=1.0.0
+livekit-plugins-silero>=1.0.0
+
+# Google Sheets Integration
+gspread>=6.1.0
+google-auth>=2.29.0
+
+# Environment Management
+python-dotenv>=1.0.1
