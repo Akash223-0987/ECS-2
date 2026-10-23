@@ -16,7 +16,11 @@ from .model_loader import (
 from .predictor import (
     BasePredictor,
     PlaceholderPredictor,
+    PriorityPredictor,
     StudentSupportPredictor,
+)
+from .priority_model import (
+    PriorityModelLoader,
 )
 from .dataset_schema import (
     AdjudicationStatus,
@@ -37,6 +41,9 @@ from .schemas import (
     InterestLevel,
     ModelStatus,
     PriorityCategory,
+    PriorityInferenceInput,
+    PriorityInferenceOutput,
+    PriorityLevel,
     TicketInput,
     TicketPrediction,
     UrgencyLevel,
@@ -54,6 +61,14 @@ from .intent_classifier import (
     AuxiliaryIntentClassifier,
     IntentModelStatus,
     IntentPrediction,
+)
+from .sheets_config import SheetsWatcherConfig
+from .sheets_watcher import (
+    GoogleSheetsClientInterface,
+    GoogleSheetsWatcher,
+    GSpreadSheetsClient,
+    MockGoogleSheetsClient,
+    RowUpdateReport,
 )
 from .validator import (
     TicketValidator,
@@ -78,6 +93,8 @@ __all__ = [
     "BasePredictor",
     "PlaceholderPredictor",
     "StudentSupportPredictor",
+    "PriorityPredictor",
+    "PriorityModelLoader",
     "HuggingFaceModelLoader",
     "check_dependencies",
     "FollowUpDecision",
@@ -85,6 +102,9 @@ __all__ = [
     "PriorityAssessment",
     "PriorityAssessmentEngine",
     "ScoreBreakdown",
+    "PriorityLevel",
+    "PriorityInferenceInput",
+    "PriorityInferenceOutput",
     "LabelProvenance",
     "AdjudicationStatus",
     "SplitType",
@@ -102,4 +122,10 @@ __all__ = [
     "AuxiliaryIntentClassifier",
     "IntentModelStatus",
     "IntentPrediction",
+    "SheetsWatcherConfig",
+    "GoogleSheetsClientInterface",
+    "GoogleSheetsWatcher",
+    "GSpreadSheetsClient",
+    "MockGoogleSheetsClient",
+    "RowUpdateReport",
 ]

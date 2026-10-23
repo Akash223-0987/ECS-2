@@ -18,13 +18,18 @@ The architecture is designed around **DistilBERT** sequence classification. It u
 ml_service/
 ├── .gitignore               # Ignores caches, virtualenvs, and model weight binaries
 ├── pyproject.toml           # Package metadata and pytest configuration
-├── requirements.txt         # Minimal dependency list (pydantic, dateutil, pytest)
+├── requirements.txt         # Minimal dependency list (pydantic, dateutil, pytest, gspread, google-auth)
 ├── README.md                # Module documentation and usage guide
 ├── LABELLING_GUIDELINES.md  # Comprehensive human annotation guidelines and rubrics
 ├── TRAINING_CONTRACT.md     # Engineering specification for teammate training on GPU
+├── PRIORITY_MODEL_INTEGRATION_CONTRACT.md # Model integration contract for Priority classification
 ├── __init__.py              # Package exports
 ├── config.py                # Configuration for Hugging Face models, devices, and paths
-├── schemas.py               # Pydantic v2 schemas for TicketInput and TicketPrediction
+├── priority_contract.py     # Canonical priority label mappings and checkpoint verification
+├── priority_model.py        # Isolated model loader and inference engine for priority classification
+├── sheets_config.py         # Configuration settings for continuous Google Sheets watcher
+├── sheets_watcher.py        # Real-time continuous Google Sheets watcher daemon and clients
+├── schemas.py               # Pydantic schemas (TicketInput, PriorityInferenceInput/Output)
 ├── dataset_schema.py        # Versioned training example schema, PII scrubber, and manifest
 ├── training_contract.py     # Canonical label mappings, hyperparameters, and report schemas
 ├── prepare_intent_dataset.py# Data preparation for 4-class auxiliary intent dataset
@@ -34,7 +39,7 @@ ml_service/
 ├── model_loader.py          # Hugging Face DistilBERT model loader with lazy imports & safety checks
 ├── decision_engine.py       # Follow-up decision engine decoupling inference from business rules
 ├── priority_engine.py       # Conservative priority assessment engine (urgency, interest, scoring)
-├── predictor.py             # Triage prediction interface coordinating schemas, engine, and loader
+├── predictor.py             # PriorityPredictor and StudentSupportPredictor interfaces
 ├── data/
 │   └── auxiliary_intent/    # Processed JSONL splits (train, val, test) and audit manifest
 ├── models/
@@ -44,6 +49,8 @@ ml_service/
     ├── conftest.py          # Pytest path discovery configuration
     ├── fixtures.py          # Synthetic mock test fixtures (clearly labelled, non-training)
     ├── test_schemas.py      # Tests for input/output schemas and serialization
+    ├── test_priority_predictor.py # Tests for PriorityPredictor and PriorityModelLoader
+    ├── test_sheets_watcher.py   # Tests for Google Sheets watcher daemon and duplicate prevention
     ├── test_dataset_schema.py # Tests for training schemas, PII scrubbing, and split leakage
     ├── test_training_contract.py # Tests for contract consistency, hyperparameters, and validation
     ├── test_intent_classifier.py # Tests for intent classification, dataset splits, and safety isolation
@@ -572,4 +579,114 @@ print(prediction.model_dump_json(indent=2))
 ```
 
 The loader automatically verifies that `id2label` matches `{0: 'NO', 1: 'YES', 2: 'REVIEW'}`, moves tensors to `cuda`, and produces predictions with verified confidence scores while preserving rule-based safety guardrails.
+
+---
+
+## 13. Continuous Google Sheets Priority Watcher Service (GitHub Issue #7)
+
+The `ml_service` includes an event-driven continuous watcher daemon that monitors a Google Sheet in real time, extracts student issue transcriptions from newly added rows, predicts categorical priority (`HIGH`, `MEDIUM`, `LOW`), and writes the prediction back to the sheet.
+
+### Architecture & Pipeline Overview
+
+```
+ Google Sheet (LiveKit / n8n rows)
+   │
+   ▼
+ GoogleSheetsWatcher (polling loop, duplicate-prevention)
+   │
+   ├─► Detects row where priority_level is null/empty
+   ├─► Extracts issue_transcription (or issue_description)
+   │
+   ▼
+ PriorityPredictor.predict_priority()
+   │
+   ├─► PriorityModelLoader (isolated model loading)
+   │     ├─► Validates target labels against {HIGH, MEDIUM, LOW}
+   │     ├─► Fine-tuned DistilBERT (GPU/CPU) if trained weights deployed
+   │     └─► Test double / heuristic fallback if GPU training is pending
+   │
+   ▼
+ GoogleSheetsClient.update_cell()
+   │
+   └─► Writes formatted priority_level ("HIGH", "MEDIUM", "LOW") back to row cell
+```
+
+### Model Compatibility Findings
+- **Existing DistilBERT Model**: Trained/configured for follow-up triage decisions (`{"NO", "YES", "REVIEW"}`). Incompatible with predicting priority.
+- **Auxiliary Intent Classifier**: Trained on 4 customer support topic tags (`payment_issue`, `get_refund`, etc.). Incompatible with priority.
+- **Current Service State**: Uses an isolated `PriorityModelLoader` with a test double / heuristic fallback (`is_trained_model=False`). Once the teammate completes model fine-tuning on a GPU, the artifact can be placed into `./models/distilbert-priority/` and will be loaded automatically without changing the watcher.
+- See full engineering specification in [`PRIORITY_MODEL_INTEGRATION_CONTRACT.md`](file:///e:/ECS/ECS-2/ml_service/PRIORITY_MODEL_INTEGRATION_CONTRACT.md).
+
+### Configuration & Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `GOOGLE_SHEET_NAME` | None | Title of the Google Spreadsheet to watch (e.g. `"Student Inquiries"`). |
+| `GOOGLE_SHEET_ID` | None | Unique Spreadsheet ID from URL (`docs.google.com/spreadsheets/d/<ID>/edit`). |
+| `GOOGLE_SHEET_WORKSHEET` | `"Sheet1"` | Worksheet tab name (or 0-indexed integer). |
+| `GOOGLE_APPLICATION_CREDENTIALS` | None | Absolute path to Google Service Account JSON file. |
+| `GOOGLE_SHEETS_CREDENTIALS_JSON` | None | Raw Service Account JSON credentials string (for cloud deployments). |
+| `POLL_INTERVAL_SECONDS` | `5.0` | Polling frequency in seconds between sheet checks. |
+| `PRIORITY_CASE` | `"UPPER"` | Formatting of priority string: `"UPPER"` (`HIGH`, `MEDIUM`, `LOW`) or `"TITLE"` (`High`, `Medium`, `Low`). |
+| `PRIORITY_MODEL_PATH` | `./models/distilbert-priority` | Path to trained priority model checkpoint directory. |
+| `RUN_ONCE` | `false` | When `true`, executes a single poll pass and exits (useful for cron jobs and testing). |
+| `LOG_LEVEL` | `"INFO"` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+
+### How to Run the Service Continuously
+
+#### Option 1: Direct CLI Command
+```bash
+# 1. Set environment variables
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+export GOOGLE_SHEET_NAME="Student Support Tickets"
+export POLL_INTERVAL_SECONDS="5.0"
+
+# 2. Run the continuous watcher
+python -m ml_service.sheets_watcher
+```
+
+*(On Windows PowerShell):*
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\service-account.json"
+$env:GOOGLE_SHEET_NAME = "Student Support Tickets"
+$env:POLL_INTERVAL_SECONDS = "5.0"
+
+python -m ml_service.sheets_watcher
+```
+
+#### Option 2: Programmatic Integration
+```python
+from ml_service.sheets_config import SheetsWatcherConfig
+from ml_service.sheets_watcher import GoogleSheetsWatcher, GSpreadSheetsClient
+from ml_service.predictor import PriorityPredictor
+
+# 1. Instantiate configuration
+config = SheetsWatcherConfig(
+    spreadsheet_name="Student Support Tickets",
+    worksheet_name="Sheet1",
+    poll_interval_seconds=5.0,
+    priority_case="UPPER",
+)
+
+# 2. Connect client and predictor
+client = GSpreadSheetsClient(config=config)
+predictor = PriorityPredictor(model_dir=config.model_dir)
+
+# 3. Start watching
+watcher = GoogleSheetsWatcher(client=client, predictor=predictor, config=config)
+watcher.start_watching()
+```
+
+#### Option 3: Offline Testing & Dry Run (No Credentials Required)
+If no Google credentials are provided in the environment, the watcher automatically boots in local demonstration mode using an in-memory `MockGoogleSheetsClient`:
+```bash
+python -m ml_service.sheets_watcher
+```
+
+### Safety, Deduplication, and Error Handling
+1. **Duplicate Prevention:** The watcher maintains a state cache of row keys (`ticket_id` or row hash) and ignores rows that already have a non-empty `priority_level` cell.
+2. **Safe Error Isolation:** If a single row fails (e.g. malformed unicode or temporary formula error), the error is logged and the watcher continues processing subsequent rows.
+3. **Transient Network Backoff:** Intermittent Google API connectivity errors trigger exponential backoff up to 60 seconds without terminating the process.
+4. **Graceful Shutdown:** Handles `SIGINT` (Ctrl+C) and `SIGTERM` signals cleanly, finishing in-flight writes before closing.
+
 

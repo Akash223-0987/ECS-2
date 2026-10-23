@@ -20,11 +20,18 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments & secrets
 venv/
 .venv/
 env/
 .env
+.env.*
+!.env.example
+authorized_user*.json
+*client_secret*.json
+*service_account*.json
+*credentials*.json
+*token*.json
 
 # Testing & Coverage
 .pytest_cache/
