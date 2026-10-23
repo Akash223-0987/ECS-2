@@ -12,10 +12,30 @@ ENV/
 env.bak/
 venv.bak/
 
-# Environment variables & secrets
+# Environment variables, credentials & secrets
 .env
 .env.*
 !.env.example
+*.json
+!ml_service/models/auxiliary-intent-baseline/*.json
+!ml_service/data/**/*.json
+!package*.json
+!tsconfig*.json
+authorized_user*.json
+*client_secret*.json
+*service_account*.json
+*credentials*.json
+*token*.json
+*.pem
+*.key
+*.p12
+
+# Local runner & environment scripts (preserve template examples)
+run_watcher.ps1
+!run_watcher.example.ps1
+*.local.ps1
+*.local.sh
+*.local.bat
 
 # Large ML weights and model binary files
 *.pt

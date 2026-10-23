@@ -21,6 +21,8 @@ from .schemas import (
     InterestLevel,
     ModelStatus,
     PriorityCategory,
+    PriorityInferenceInput,
+    PriorityInferenceOutput,
     TicketInput,
     TicketPrediction,
     UrgencyLevel,
@@ -418,6 +420,97 @@ class StudentSupportPredictor(BasePredictor):
         """Process a list of tickets sequentially."""
         return [self.predict(t) for t in tickets]
 
+    def predict_priority(
+        self, input_data: Union[str, PriorityInferenceInput, Dict[str, Any], Any]
+    ) -> PriorityInferenceOutput:
+        """Convenience method to extract priority_level from ticket or transcription."""
+        predictor = PriorityPredictor(config=self.config)
+        return predictor.predict_priority(input_data)
+
 
 # Alias for backwards compatibility / descriptive clarity
 PlaceholderPredictor = StudentSupportPredictor
+
+
+# ==============================================================================
+# Simplified Priority Predictor (GitHub Issue #7)
+# ==============================================================================
+
+class PriorityPredictor(BasePredictor):
+    """Simplified priority inference interface for student support inquiries.
+    
+    Accepts `issue_transcription` and outputs `priority_level` with operational metadata.
+    Completely isolated from obsolete PII processing, dual-model intent classifying,
+    and complex triage Pydantic schemas.
+    """
+
+    def __init__(
+        self,
+        config: Optional[MLServiceConfig] = None,
+        model_loader: Optional[Any] = None,
+        model_dir: Optional[str] = None,
+    ) -> None:
+        from .priority_model import PriorityModelLoader
+
+        self.config = config or MLServiceConfig()
+        if model_loader is not None:
+            self.model_loader = model_loader
+        else:
+            target_dir = model_dir or self.config.model_dir
+            self.model_loader = PriorityModelLoader(config=self.config, model_dir=target_dir)
+            self.model_loader.load_model()
+
+    def predict_priority(
+        self, input_data: Union[str, PriorityInferenceInput, Dict[str, Any], Any]
+    ) -> PriorityInferenceOutput:
+        """Predict priority level from transcription text.
+        
+        Args:
+            input_data: String transcript, PriorityInferenceInput instance,
+                        or dictionary containing 'issue_transcription' or 'issue_description'.
+                        
+        Returns:
+            PriorityInferenceOutput with priority_level (HIGH, MEDIUM, LOW).
+        """
+        transcription: str = ""
+        ticket_id: Optional[str] = None
+
+        if isinstance(input_data, str):
+            transcription = input_data
+        elif isinstance(input_data, PriorityInferenceInput):
+            transcription = input_data.issue_transcription
+            ticket_id = input_data.ticket_id
+        elif isinstance(input_data, dict):
+            transcription = str(
+                input_data.get("issue_transcription")
+                or input_data.get("issue_description")
+                or ""
+            )
+            ticket_id = input_data.get("ticket_id")
+        elif hasattr(input_data, "issue_transcription"):
+            transcription = str(getattr(input_data, "issue_transcription", "") or "")
+            ticket_id = getattr(input_data, "ticket_id", None)
+        elif hasattr(input_data, "issue_description"):
+            transcription = str(getattr(input_data, "issue_description", "") or "")
+            ticket_id = getattr(input_data, "ticket_id", None)
+
+        res = self.model_loader.classify_priority(transcription)
+
+        return PriorityInferenceOutput(
+            priority_level=res.get("priority_level", "LOW"),
+            confidence=res.get("confidence"),
+            model_status=res.get("status", "READY"),
+            is_trained_model=res.get("is_trained_model", False),
+            status_reason=res.get("status_reason"),
+        )
+
+    def predict(self, ticket: Union[TicketInput, Dict[str, Any], Any]) -> Any:
+        """BasePredictor compatibility: invokes predict_priority."""
+        return self.predict_priority(ticket)
+
+    def predict_batch(
+        self, tickets: List[Union[TicketInput, Dict[str, Any], Any]]
+    ) -> List[PriorityInferenceOutput]:
+        """Process a list of tickets or transcriptions sequentially."""
+        return [self.predict_priority(t) for t in tickets]
+
